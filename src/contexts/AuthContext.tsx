@@ -27,13 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
-          const data = await res.json();
-          // The /api/auth/me endpoint returns the user object directly
+          const response = await res.json();
+          // The /api/auth/me endpoint returns { success: true, data: { ... } }
+          const userData = response.data || response;
           setUser({
-            id: data._id,
-            email: data.email,
-            name: data.name,
-            role: data.role as 'user' | 'admin' | 'editor',
+            id: userData.id || userData._id,
+            email: userData.email,
+            name: userData.name,
+            role: userData.role as 'user' | 'admin' | 'editor',
           });
         }
       } catch (error) {

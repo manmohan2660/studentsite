@@ -34,20 +34,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured in environment variables');
+    }
+
     const token = jwt.sign(
       {
         userId: user._id,
         role: user.role,
         email: user.email,
       },
-      process.env.JWT_SECRET!,
+      jwtSecret,
       { expiresIn: '7d' }
     )
 
     const res = NextResponse.json(
       {
         success: true,
-        role: user.role,
         data: {
           token,
           user: {

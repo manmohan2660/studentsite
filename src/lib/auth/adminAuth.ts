@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import Admin from "@/models/Admin";
+import User from "@/models/User";
 import dbConnect from "@/lib/db/connect";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default-secret-key";
@@ -7,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "default-secret-key";
 /**
  * ✅ Verify Admin Token - Works with Bearer tokens
  * Used in API routes to verify admin authorization
+ * Supports both Admin model and User model with role='admin'
  */
 export async function verifyAdminToken(token: string) {
   try {
@@ -22,8 +24,16 @@ export async function verifyAdminToken(token: string) {
     // Verify JWT
     const decoded: any = jwt.verify(token, JWT_SECRET);
 
-    // Fetch admin
-    const admin = await Admin.findById(decoded.id);
+    // Try Admin model first
+    let admin = await Admin.findById(decoded.id);
+
+    // If not found in Admin, try User model with admin role
+    if (!admin) {
+      const user = await User.findById(decoded.id);
+      if (user && user.role === 'admin') {
+        admin = user as any;
+      }
+    }
 
     if (!admin) {
       return {
@@ -32,7 +42,8 @@ export async function verifyAdminToken(token: string) {
       };
     }
 
-    if (!admin.isActive) {
+    const isActive = admin.isActive !== false; // isActive should default to true
+    if (!isActive) {
       return {
         valid: false,
         message: "Admin account is inactive",
@@ -55,6 +66,7 @@ export async function verifyAdminToken(token: string) {
 /**
  * ✅ Require Admin Helper for Next.js Route Handlers
  * Works with cookie-based JWT auth
+ * Supports both Admin model and User model with role='admin'
  */
 export async function requireAdmin(request: Request) {
   try {
@@ -86,8 +98,16 @@ export async function requireAdmin(request: Request) {
     // Verify JWT
     const decoded: any = jwt.verify(token, JWT_SECRET);
 
-    // Fetch admin
-    const admin = await Admin.findById(decoded.id);
+    // Try Admin model first
+    let admin = await Admin.findById(decoded.id);
+
+    // If not found in Admin, try User model with admin role
+    if (!admin) {
+      const user = await User.findById(decoded.id);
+      if (user && user.role === 'admin') {
+        admin = user as any;
+      }
+    }
 
     if (!admin) {
       return {
@@ -97,7 +117,8 @@ export async function requireAdmin(request: Request) {
       };
     }
 
-    if (!admin.isActive) {
+    const isActive = admin.isActive !== false;
+    if (!isActive) {
       return {
         success: false,
         status: 403,

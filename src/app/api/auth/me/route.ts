@@ -7,6 +7,11 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
+    }
+
     // Get token from cookies
     const token = request.cookies.get('token')?.value;
 
@@ -15,16 +20,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify and decode token
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const decoded: any = jwt.verify(token, jwtSecret);
 
     // Get user from database
     const user = await User.findById(decoded.userId).select('-password').lean();
 
     if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: 'User not found' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(user, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error('Auth error:', error);
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
